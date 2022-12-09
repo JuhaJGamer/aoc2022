@@ -6,11 +6,14 @@ import Data.List
 
 import System.IO
 
+
 type Coord = (Int, Int)
 data Dir = U | D | L | R
     deriving (Show, Eq)
 data Move = Move Dir Int
     deriving (Show, Eq)
+type Rope = [Coord]
+
 
 both f = bimap f f
 coordSum x = uncurry bimap (both (+) x)
@@ -43,13 +46,13 @@ nextMoves :: [Move] -> [Move]
 nextMoves ((Move _ 0):xs) = xs
 nextMoves ((Move d n):xs) = Move d (n-1) : xs
 
-movePath :: [Move] -> Coord -> Coord -> [(Coord, Coord)]
-movePath [] head tail = [(head, tail)]
-movePath ms@(m:_) head tail =
+movePath :: [Move] -> [Coord] -> [[Coord]]
+movePath [] ks = [ks]
+movePath ms@(m:_) (head:tails) =
   let head' = nextHead m head
-      tail' = nextTail head' tail
+      rope' = reverse $ foldl (\(k:ks) t -> nextTail k t : k : ks) [head'] tails
       ms'   = nextMoves ms
-   in (head, tail):movePath ms' head' tail'
+   in (head:tails) : movePath ms' rope'
 
 readMove :: String -> Move
 readMove (d:' ':s)
@@ -61,7 +64,9 @@ readMove (d:' ':s)
         'R' -> R
 
 main = do moves <- map readMove . lines <$> getContents
-          let path          = movePath moves (0,0) (0,0)
-              tailPositions = nub $ sort $ map snd path
-          print $ length tailPositions
+          let shortPath =  movePath moves $ map (const (0,0)) [0..1]
+              longPath = movePath moves $ map  (const (0,0)) [0..9]
+              tailPositions = nub . sort . map last
+          print $ length $ tailPositions shortPath
+          print $ length $ tailPositions longPath
           putStrLn "trolled"
