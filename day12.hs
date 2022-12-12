@@ -5,8 +5,9 @@ module Day12 where
 import qualified Data.Array as Array
 import           Data.Array (Array, array, (!), (//))
 
-import Data.Maybe
+import Data.Bifunctor
 import Data.Char
+import Data.Maybe
 import Data.List
 
 import System.IO
@@ -71,8 +72,8 @@ readHeightmap ss = (hs, start, end)
           start = findChar 'S' ss
           end   = findChar 'E' ss
 
-findPath :: Coord -> Coord -> Heightmap -> Maybe [Coord]
-findPath start end hMap = bfs (pure start) emptyArr
+findPath :: Coord -> (Coord -> Bool) -> Heightmap -> Maybe [Coord]
+findPath start endF hMap = bfs (pure start) emptyArr
     where emptyArr = Nothing <$ hMap
           bfs fifo predMat = do
               (cur,fifo') <- dequeue fifo
@@ -81,7 +82,7 @@ findPath start end hMap = bfs (pure start) emptyArr
                              . filter inBounds
                              . map (cur ^+^)
                              $ [(0,1),(1,0),(0,-1),(-1,0)]
-                  allowedStep = (<= 1) . subtract (hMap!cur) . (hMap !)
+                  allowedStep = (-1 <=) . subtract (hMap!cur) . (hMap !)
                   notVisited  = isNothing . (predMat !)
                   inBounds (y,x)
                      | x0 > x || x > xMax = False
@@ -90,7 +91,7 @@ findPath start end hMap = bfs (pure start) emptyArr
                      where ((y0,x0),(yMax,xMax)) = Array.bounds hMap
                   fifo'' = foldl (flip enqueue) fifo' neighbours
                   predMat' = predMat // map (,Just cur) neighbours
-              if cur == end
+              if endF cur
                   then Just $ backtrack (Just cur) predMat
                   else bfs fifo'' predMat'
           backtrack (Just c) predMat
@@ -99,12 +100,10 @@ findPath start end hMap = bfs (pure start) emptyArr
 
 main = do
     (hs, start, end) <- readHeightmap . lines <$> getContents
-    let lowPoints = map fst
-                  . filter ((== readHeight 'a') . snd)
-                  $ Array.assocs hs
-        paths     = mapMaybe (flip (`findPath` end) hs) lowPoints
-    case findPath start end hs of
+    case findPath end (== start) hs of
         Nothing -> putStrLn "No path from start to end!"
         Just p  -> print . subtract 1 . length $ p
-    print . subtract 1 . minimum . map length $ paths
+    case findPath end ((== readHeight 'a') . (hs !)) hs of
+        Nothing -> putStrLn "No path from end to height 'a'!"
+        Just p  -> print . subtract 1 . length $ p
     putStrLn "trolled"
