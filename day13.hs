@@ -9,22 +9,30 @@ import System.IO
 import Debug.Trace
 
 data Tree a = Leaf a | Node [Tree a]
-    deriving (Eq)
 
 instance (Show a) => Show (Tree a) where
     show (Node xs) = show xs
     show (Leaf a)  = show a
 
+instance (Eq a) => Eq (Tree a) where
+    (Leaf a)   == (Leaf b) = a == b
+    a@(Leaf _) == b@(Node _) = Node [a] ==  b
+    a@(Node _) == b@(Leaf _) = a == Node [b]
+    (Node []) == (Node []) = True
+    (Node xs) == (Node ys) = length xs == length ys && all (uncurry (==)) (zip xs ys)
+    
+    
 instance (Show a, Ord a) => Ord (Tree a) where
-    a@(Leaf _) < b@(Node _) = Node [a] < b
-    a@(Node _) < b@(Leaf _) = a < Node [b]
-    (Leaf a)   < (Leaf b)   = a < b
-    (Node [])  < (Node _)   = True
-    (Node _ )  < (Node [])  = False
-    (Node (x:xs))  < (Node (y:ys))
-       | x < y  = True
-       | x == y = Node xs < Node ys
-       | x >  y = False 
+    compare a@(Leaf _) b@(Node _) = compare (Node [a]) b
+    compare a@(Node _) b@(Leaf _) = compare a $ Node [b]
+    compare (Leaf a) (Leaf b) = compare a b
+    compare (Node []) (Node []) = EQ
+    compare (Node []) (Node _)  = LT
+    compare (Node _ ) (Node []) = GT
+    compare (Node (x:xs)) (Node (y:ys))
+       | x < y  = LT
+       | x == y = compare (Node xs) (Node ys) 
+       | x >  y = GT 
 
     a <= b = a<b
 
@@ -51,5 +59,6 @@ main = do
     let pairs :: [(Tree Int, Tree Int)]
         pairs = map (\[a,b] -> (readTree a,readTree b)) input
         ordered = map snd . filter (uncurry (<) . fst) $ zip pairs [1..]
+    print ordered
     print $ sum ordered
     putStrLn "trolled"
