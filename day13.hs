@@ -2,6 +2,7 @@ module Day13 where
 
 import Data.Bifunctor
 import Data.Char
+import Data.List
 import Data.List.Split
 
 import System.IO
@@ -55,10 +56,13 @@ treenode (x:xs) ts   =
      in treenode xs' (Leaf (read numS) : ts)
 
 main = do
-    input <- splitOn [""] . lines <$> getContents
+    input <- map readTree . filter (not . null) . lines <$> getContents
     let pairs :: [(Tree Int, Tree Int)]
-        pairs = map (\[a,b] -> (readTree a,readTree b)) input
-        ordered = map snd . filter (uncurry (<) . fst) $ zip pairs [1..]
-    print ordered
-    print $ sum ordered
+        pairs = map (\[a,b] -> (a,b)) $ chunksOf 2 input
+        preOrdered = map snd . filter (uncurry (<) . fst) $ zip pairs [1..]
+        dividers = [readTree "[[2]]", readTree "[[6]]"]
+        ordered = sort (dividers ++ input)
+        divIndices = map snd . filter ((`elem` dividers) . fst) $ zip ordered [1..] 
+    print $ sum preOrdered
+    print $ product divIndices
     putStrLn "trolled"
