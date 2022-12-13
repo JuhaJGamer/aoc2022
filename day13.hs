@@ -9,16 +9,24 @@ import System.IO
 import Debug.Trace
 
 data Tree a = Leaf a | Node [Tree a]
-    deriving (Show, Eq)
+    deriving (Eq)
+
+instance (Show a) => Show (Tree a) where
+    show (Node xs) = show xs
+    show (Leaf a)  = show a
 
 instance (Show a, Ord a) => Ord (Tree a) where
-    a@(Leaf _) <= b@(Node _) = Node [a] <= b
-    a@(Node _) <= b@(Leaf _) = a        <= Node [b]
-    (Leaf a)   <= (Leaf b) = trace (show (a,b)) (a <= b)
-    (Node xs)  <= (Node ys)
-       | null xs   = True
-       | null ys   = False
-       | otherwise = xs <= ys
+    a@(Leaf _) < b@(Node _) = Node [a] < b
+    a@(Node _) < b@(Leaf _) = a < Node [b]
+    (Leaf a)   < (Leaf b)   = a < b
+    (Node [])  < (Node _)   = True
+    (Node _ )  < (Node [])  = False
+    (Node (x:xs))  < (Node (y:ys))
+       | x < y  = True
+       | x == y = Node xs < Node ys
+       | x >  y = False 
+
+    a <= b = a<b
 
 readTree:: (Read a) => String -> Tree a
 readTree xs = let (Node ts, zs) = treenode (xs ++ "]") [] in head ts
