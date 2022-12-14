@@ -69,14 +69,40 @@ dropSand sand scan
                 _   -> False
 
 dropUntilAbyss :: Coord -> CaveScan -> CaveScan
-dropUntilAbyss source scan = 
-   case dropSand source scan of 
+dropUntilAbyss source scan =
+   case dropSand source scan of
      Nothing -> scan
      Just sand -> dropUntilAbyss source (scan // [(sand, Sand)])
+
+dropUntilSource :: Coord -> CaveScan -> CaveScan
+dropUntilSource source scan =
+    case dropSand source scan of
+        Nothing -> dropUntilSource source (secureFloor scan)
+        Just sand ->
+            if sand == source
+                then scan // [(sand, Sand)]
+                else dropUntilSource source (scan // [(sand, Sand)])
+
+secureFloor :: CaveScan -> CaveScan
+secureFloor scan = emptyScan ((y0,x0-1),(ymax,xmax+1))
+                 // Array.assocs scan
+                 // newFloor
+      where emptyScan bounds = Array.listArray bounds $ repeat Air
+            newFloor = [((ymax,x0-1), Rock), ((ymax, xmax+1), Rock)]
+            ((y0,x0),(ymax,xmax)) = Array.bounds scan
+
+addFloor :: CaveScan -> CaveScan
+addFloor scan = largeScan // Array.assocs scan // floor
+    where ((y0,x0),(ymax,xmax)) = Array.bounds scan
+          largeScan = Array.listArray ((y0,x0),(ymax+2,xmax)) $ repeat Air
+          floor = [((ymax+2, x), Rock) | x <- [x0..xmax]]
 
 main = do
     input <- map parseStructure . lines <$> getContents
     let scan  = createScan input
         scan' = dropUntilAbyss (0,500) scan
+        floorScan  = addFloor scan
+        floorScan' = dropUntilSource (0,500) floorScan
     print $ length $ filter (isSand . snd) $ Array.assocs scan'
+    print $ length $ filter (isSand . snd) $ Array.assocs floorScan'
     putStrLn "trolled"
